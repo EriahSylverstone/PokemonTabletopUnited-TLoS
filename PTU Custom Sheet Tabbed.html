@@ -1,8 +1,4 @@
 <script type="text/worker">
-on("change:input", function() {
-    infoImport();
-});
-
 on("change:repeating_moves remove:repeating_moves", function() {
     console.log("Got here");
     getSectionIDs("repeating_moves", function(idarray) {
@@ -40,58 +36,93 @@ on("change:chartype_dup", function() {
     hpCalc();
 });
 
-	let natures={
-        "composed":{"up":"HP","down":"HP"},"cuddly":{"up":"HP","down":"ATK"},"distracted":{"up":"HP","down":"DEF"},
-        "proud":{"up":"HP","down":"SPATK"},"decisive":{"up":"HP","down":"SPDEF"},"patient":{"up":"HP","down":"SPEED"},
-        "desperate":{"up":"ATK","down":"HP"},"hardy":{"up":"ATK","down":"ATK"},"lonely":{"up":"ATK","down":"DEF"},
-        "adamant":{"up":"ATK","down":"SPATK"},"naughty":{"up":"ATK","down":"SPDEF"},"brave":{"up":"ATK","down":"SPEED"},
-        "stark":{"up":"DEF","down":"HP"},"bold":{"up":"DEF","down":"ATK"},"docile":{"up":"DEF","down":"DEF"},"impish":{"up":"DEF","down":"SPATK"},
-        "lax":{"up":"DEF","down":"SPDEF"},"relaxed":{"up":"DEF","down":"SPEED"},"curious":{"up":"SPATK","down":"HP"},
-        "modest":{"up":"SPATK","down":"ATK"},"mild":{"up":"SPATK","down":"DEF"},"bashful":{"up":"SPATK","down":"SPATK"},
-        "rash":{"up":"SPATK","down":"SPDEF"},"quiet":{"up":"SPATK","down":"SPEED"},"dreamy":{"up":"SPDEF","down":"HP"},
-        "calm":{"up":"SPDEF","down":"ATK"},"gentle":{"up":"SPDEF","down":"DEF"},"careful":{"up":"SPDEF","down":"SPATK"},
-        "quirky":{"up":"SPDEF","down":"SPDEF"},"sassy":{"up":"SPDEF","down":"SPEED"},"skittish":{"up":"SPEED","down":"HP"},
-        "timid":{"up":"SPEED","down":"ATK"},"hasty":{"up":"SPEED","down":"DEF"},"jolly":{"up":"SPEED","down":"SPATK"},
-        "naive":{"up":"SPEED","down":"SPDEF"},"serious":{"up":"SPEED","down":"SPEED"}
-    };
-	
-    on("change:nature",function(){
-        var update = {};
-        getAttrs(["nature"],function(v){
-            var nat = v["nature"] + "";
-            
-            nat = ('' + nat).toLowerCase().trim();
-            if(natures[nat] != null){
-                update["nature_high"] = natures[nat]["up"];
-                update["nature_low"]  = natures[nat]["down"];
-            }
-            
-            // Silent to avoid infinite callbacks
-            setAttrs(update, {silent: true});
-        });
-    });
-    
-    on("change:nature_high change:nature_low",function(){
-        var update = {};        
-        getAttrs(["nature_high","nature_low"],function(v){
-            var high = v["nature_high"];
-            var low  = v["nature_low"];
-            
-            for (var property in natures) {
-                if(natures[property]["up"] == high && natures[property]["down"] == low){
-                    
-                    update["nature"] = property.charAt(0).toUpperCase() + property.slice(1);
-                    
-                    // Silent to avoid infinite callbacks
-                    setAttrs(update,{silent:true});
-                    break;
-                }
-            }
-        });
-        
-    });
+		const natures = {
+        "composed":{"up":"HP","down":"HP"},
+        "cuddly":{"up":"HP","down":"ATK"},
+        "distracted":{"up":"HP","down":"DEF"},
+        "proud":{"up":"HP","down":"SPATK"},
+        "decisive":{"up":"HP","down":"SPDEF"},
+        "patient":{"up":"HP","down":"SPEED"},
+        "desperate":{"up":"ATK","down":"HP"},
+        "hardy":{"up":"ATK","down":"ATK"},
+        "lonely":{"up":"ATK","down":"DEF"},
+        "adamant":{"up":"ATK","down":"SPATK"},
+        "naughty":{"up":"ATK","down":"SPDEF"},
+        "brave":{"up":"ATK","down":"SPEED"},
+        "stark":{"up":"DEF","down":"HP"},
+        "bold":{"up":"DEF","down":"ATK"},
+        "docile":{"up":"DEF","down":"DEF"},
+        "impish":{"up":"DEF","down":"SPATK"},
+        "lax":{"up":"DEF","down":"SPDEF"},
+        "relaxed":{"up":"DEF","down":"SPEED"},
+        "curious":{"up":"SPATK","down":"HP"},
+        "modest":{"up":"SPATK","down":"ATK"},
+        "mild":{"up":"SPATK","down":"DEF"},
+        "bashful":{"up":"SPATK","down":"SPATK"},
+        "rash":{"up":"SPATK","down":"SPDEF"},
+        "quiet":{"up":"SPATK","down":"SPEED"},
+        "dreamy":{"up":"SPDEF","down":"HP"},
+        "calm":{"up":"SPDEF","down":"ATK"},
+        "gentle":{"up":"SPDEF","down":"DEF"},
+        "careful":{"up":"SPDEF","down":"SPATK"},
+        "quirky":{"up":"SPDEF","down":"SPDEF"},
+        "sassy":{"up":"SPDEF","down":"SPEED"},
+        "skittish":{"up":"SPEED","down":"HP"},
+        "timid":{"up":"SPEED","down":"ATK"},
+        "hasty":{"up":"SPEED","down":"DEF"},
+        "jolly":{"up":"SPEED","down":"SPATK"},
+        "naive":{"up":"SPEED","down":"SPDEF"},
+        "serious":{"up":"SPEED","down":"SPEED"}
+		};
 
-on("change:base_hp change:hp_bonus change:hp change:base_atk change:atk_bonus change:atk change:atk_stage change:base_def change:def_bonus change:def change:def_stage change:base_spdef change:spdef_bonus change:spdef change:spdef_stage change:base_spatk change:spatk_bonus change:spatk change:spatk_stage change:base_speed change:speed_bonus change:speed change:speed_stage", function() {
+		// Listen to all three trigger attributes at once
+		on("change:nature change:nature_high change:nature_low", function(eventInfo) {
+			getAttrs(["nature", "nature_high", "nature_low"], function(v) {
+				let update = {};
+				let high = v.nature_high;
+				let low = v.nature_low;
+				let currentNat = (v.nature || "").toLowerCase().trim();
+
+				// 1. If the Master "nature" dropdown changed, sync High/Low
+				if (eventInfo.sourceAttribute === "nature") {
+					if (natures[currentNat]) {
+						high = natures[currentNat].up;
+						low = natures[currentNat].down;
+						update["nature_high"] = high;
+						update["nature_low"] = low;
+					}
+				} 
+				// 2. If High or Low changed manually, try to find the matching Nature name
+				else {
+					let foundMatch = false;
+					for (let name in natures) {
+						if (natures[name].up === high && natures[name].down === low) {
+							update["nature"] = name.charAt(0).toUpperCase() + name.slice(1);
+							foundMatch = true;
+							break;
+						}
+					}
+					// Optional: If no match found, clear the nature name or set to "Custom"
+					if (!foundMatch) update["nature"] = "Custom";
+				}
+
+				// 3. Perform the Math for all _Nat attributes
+				const stats = ["HP", "ATK", "DEF", "SPATK", "SPDEF", "SPEED"];
+				
+				stats.forEach(stat => {
+					let val = 0;
+					if (stat === high) val += (stat === "HP") ? 1 : 2;
+					if (stat === low)  val -= (stat === "HP") ? 1 : 2;
+					
+					update[stat + "_Nat"] = val;
+				});
+
+				// Update everything at once.
+				setAttrs(update);
+			});
+		});
+
+on("change:base_hp change:hp_bonus change:hp change:hp_nat change:base_atk change:atk_bonus change:atk change:atk_stage change:atk_nat change:base_def change:def_bonus change:def change:def_stage change:def_nat change:base_spdef change:spdef_bonus change:spdef change:spdef_stage change:spdef_nat change:base_spatk change:spatk_bonus change:spatk change:spatk_stage change:spatk_nat change:base_speed change:speed_bonus change:speed change:speed_stage change:speed_nat", function() {
     statUp();
 });
 
@@ -180,6 +211,23 @@ on('change:fixmoves', () => {
     });
 });
 
+on('change:abilsactive', () => {
+    getAttrs(["AbilsActive"], function(values) {
+        const mactive = parseInt(values.AbilsActive) || 0;
+        
+        getSectionIDs('repeating_abilities', idArray => {
+            const setObj = {};
+            
+            idArray.forEach(id => {
+                const attrName = `repeating_abilities_${id}_AbilActive`;
+                setObj[attrName] = mactive;
+            });
+            
+            setAttrs(setObj);
+        });
+    });
+});
+
 on('change:movesactive', () => {
     getAttrs(["MovesActive"], function(values) {
         const mactive = parseInt(values.MovesActive) || 0;
@@ -206,6 +254,40 @@ on('change:spellsactive', () => {
             
             idArray.forEach(id => {
                 const attrName = `repeating_spells_${id}_SpellActive`;
+                setObj[attrName] = mactive;
+            });
+            
+            setAttrs(setObj);
+        });
+    });
+});
+
+on('change:featsactive', () => {
+    getAttrs(["FeatsActive"], function(values) {
+        const mactive = parseInt(values.FeatsActive) || 0;
+        
+        getSectionIDs('repeating_features', idArray => {
+            const setObj = {};
+            
+            idArray.forEach(id => {
+                const attrName = `repeating_features_${id}_FeatActive`;
+                setObj[attrName] = mactive;
+            });
+            
+            setAttrs(setObj);
+        });
+    });
+});
+
+on('change:edgesactive', () => {
+    getAttrs(["EdgesActive"], function(values) {
+        const mactive = parseInt(values.EdgesActive) || 0;
+        
+        getSectionIDs('repeating_edges', idArray => {
+            const setObj = {};
+            
+            idArray.forEach(id => {
+                const attrName = `repeating_edges_${id}_EdgeActive`;
                 setObj[attrName] = mactive;
             });
             
@@ -623,196 +705,215 @@ on("change:fixmoves change:struggle_type change:move1_type change:move2_type cha
         }
     }   
     
-    var infoImport = function() {
-        getAttrs(["input"], function (v) {
-            var char = JSON.parse(v.input);
+	/* Import character from JSON data */
+    on("clicked:import", function() {
+        infoImport();
+    });
+	
+	var infoImport = function() {
+        getAttrs(["jsonimport"], function (v) {
+            
+            var char = JSON.parse(v["jsonimport"]);
+            
             var x; var t; var rmoves; var rcaps; var redges; var rabils; var rfeats; var i;
+            t = {};
+            
             getSectionIDs("repeating_moves", function(idarray) {
-            rmoves = idarray;
-            getSectionIDs("repeating_capabilities", function(idarray) {
-            rcaps = idarray;
-            getSectionIDs("repeating_edges", function(idarray) {
-            redges = idarray;
-            getSectionIDs("repeating_features", function(idarray) {
-            rfeats = idarray;
-            getSectionIDs("repeating_abilities", function(idarray) {
-            rabils = idarray;
-			const removeData = {};
-			idArray.forEach(id => {
-			removeData[`repeating_moves_${id}_name`] = null; // Setting a name to null deletes the row
-			});
-    
-			setAttrs(removeData, {silent: true}, function() {
-            if (rmoves==undefined){rmoves=[];}
-            if (rcaps==undefined){rcaps=[];}
-            if (redges==undefined){redges=[];}
-            if (rfeats==undefined){rfeats=[];}
-            if (rabils==undefined){rabils=[];}
-            for (var property in char) {
-                if (char.hasOwnProperty(property)) {
-                    if (property.match(/Move\d/g)!=null) {
-                        i = Number(property.substring(4));
-                        t = {};
-                        if (i<7){
-                            for (var prop in char[property]){
-                                if (char[property].hasOwnProperty(prop)){
-                                    x = property.concat("_").concat(prop);
-                                    t[x] = char[property][prop];
-                                }
-                            }
-                            setAttrs(t);
-                        } else if (i<7+rmoves.length){
-                            for (var prop in char[property]){
-                                if (char[property].hasOwnProperty(prop)){
-                                    x = "repeating_moves_".concat(rmoves[i-7]).concat("_Move_").concat(prop);
-                                    t[x] = char[property][prop];
-                                }
-                            }
-                            setAttrs(t);
-                        } else {
-                            i=generateRowID();
-                            for (var prop in char[property]){
-                                if (char[property].hasOwnProperty(prop)){
-                                    x = "repeating_moves_".concat(i).concat("_Move_").concat(prop);
-                                    t[x] = char[property][prop];
-                                }
-                            }
-                            setAttrs(t);
-                        }
-                    } else if (property.match(/Feature\d/g)!=null) {
-                        i = Number(property.substring(7));
-                        t = {};
-                        if (i<2){
-                            for (var prop in char[property]){
-                                if (char[property].hasOwnProperty(prop)){
-                                    x = "Feature".concat(prop);
-                                    t[x] = char[property][prop];
-                                }
-                            }
-                            setAttrs(t);
-                        } else if (i<2+rfeats.length){
-                            for (var prop in char[property]){
-                                if (char[property].hasOwnProperty(prop)){
-                                    x = "repeating_features_".concat(rfeats[i-2]).concat("_Feature_").concat(prop);
-                                    t[x] = char[property][prop];
-                                }
-                            }
-                            setAttrs(t);
-                        } else {
-                            i=generateRowID();
-                            for (var prop in char[property]){
-                                if (char[property].hasOwnProperty(prop)){
-                                    x = "repeating_features_".concat(i).concat("_Feature_").concat(prop);
-                                    t[x] = char[property][prop];
-                                }
-                            }
-                            setAttrs(t);
-                        }
-                    } else if (property.match(/Ability\d/g)!=null) {
-                        i = Number(property.substring(7));
-                        t = {};
-                        if (i<2){
-                            for (var prop in char[property]){
-                                if (char[property].hasOwnProperty(prop)){
-                                    x = "Ability".concat(prop);
-                                    t[x] = char[property][prop];
-                                }
-                            }
-                            setAttrs(t);
-                        } else if (i<2+rabils.length){
-                            for (var prop in char[property]){
-                                if (char[property].hasOwnProperty(prop)){
-                                    x = "repeating_abilities_".concat(rabils[i-2]).concat("_Ability_").concat(prop);
-                                    t[x] = char[property][prop];
-                                }
-                            }
-                            setAttrs(t);
-                        } else {
-                            i=generateRowID();
-                            for (var prop in char[property]){
-                                if (char[property].hasOwnProperty(prop)){
-                                    x = "repeating_abilities_".concat(i).concat("_Ability_").concat(prop);
-                                    t[x] = char[property][prop];
-                                }
-                            }
-                            setAttrs(t);
-                        }
-                    } else if (property.match(/Edge\d/g)!=null) {
-                        i = Number(property.substring(4));
-                        t = {};
-                        if (i<=redges.length){
-                            for (var prop in char[property]){
-                                if (char[property].hasOwnProperty(prop)){
-                                    x = "repeating_edges_".concat(redges[i-1]).concat("_Edge").concat(prop);
-                                    t[x] = char[property][prop];
-                                }
-                            }
-                            setAttrs(t);
-                        } else {
-                            i=generateRowID();
-                            for (var prop in char[property]){
-                                if (char[property].hasOwnProperty(prop)){
-                                    x = "repeating_edges_".concat(i).concat("_Edge").concat(prop);
-                                    t[x] = char[property][prop];
-                                }
-                            }
-                            setAttrs(t);
-                        }
-                    } 
-                    else if (property=="Capabilities"){
-                        x = 0;
-                        for (var prop in char[property]) {
-                            if (char[property].hasOwnProperty(prop)) {
-                                if (prop=="Overland"||prop=="Swim"||prop=="HJ"||prop=="LJ"||prop=="Sky"||prop=="Levitate"||prop=="Burrow"||prop=="Power") {
-                                    t={};
-                                    t[prop]=char[property][prop];
-                                    setAttrs(t);
-                                }  else if (Number.isInteger(char[property][prop])){
-                                    t={};
-                                    if (x<rcaps.length-1) {
-                                        t["repeating_capabilities_".concat(rcaps[x]).concat("_Capability")]=prop;
-                                        t["repeating_capabilities_".concat(rcaps[x]).concat("_Capability_Rank")]=char[property][prop];
-                                        setAttrs(t);
-                                    } else {
-                                        i=generateRowID();
-                                        t["repeating_capabilities_".concat(i).concat("_Capability")]=prop;
-                                        t["repeating_capabilities_".concat(i).concat("_Capability_Rank")]=char[property][prop];
-                                        setAttrs(t);
+                rmoves = idarray;
+            
+                getSectionIDs("repeating_features", function(idarray) {
+                    rcaps = idarray;
+
+                    getSectionIDs("repeating_edges", function(idarray) {
+                        redges = idarray;
+
+                        getSectionIDs("repeating_features", function(idarray) {
+                            rfeats = idarray;
+
+                            getSectionIDs("repeating_abilities", function(idarray) {
+                                rabils = idarray;
+
+                                if (rmoves==undefined){rmoves=[];}
+                                if (rcaps ==undefined){rcaps=[];}
+                                if (redges==undefined){redges=[];}
+                                if (rfeats==undefined){rfeats=[];}
+                                if (rabils==undefined){rabils=[];}
+                                
+                                for (var property in char) {
+                                    if (char.hasOwnProperty(property)) {
+                                        if(char[property] == undefined || char[property] === ""){
+                                            continue;
+                                        }
+                                        if (property.match(/Move\s*\d*/gi) != null) {
+                                        // Import Moves
+                                            
+                                            i = generateRowID();
+                                            
+                                            for (var prop in char[property]){
+                                                if (char[property].hasOwnProperty(prop)){
+
+                                                    if(char[property][prop] == undefined || char[property][prop] === ""){
+                                                        continue;
+                                                    }
+
+                                                    x = "repeating_moves_" + i + "_Move_";
+                    
+                                                    switch(prop){
+                                                        case "Name":
+                                                            t[x + "Name"] = char[property][prop];
+                                                            break;
+                                                        case "Type":
+                                                            t[x + "Type"] = char[property][prop];
+                                                            break;
+                                                        case "Freq":
+                                                            t[x + "Freq"] = char[property][prop];
+                                                            break;
+                                                            
+                                                            break;
+                                                        case "AC":
+                                                            t[x + "AC"] = parseInt(char[property][prop])||0;
+                                                            break;
+                                                        case "DB":
+                                                            t[x + "DB"] = char[property][prop];
+                                                            break;
+                                                        case "DType":
+                                                            t[x + "Dtype"] = char[property][prop];
+                                                            break;
+                                                        case "Range":
+                                                            t[x + "Range"] = char[property][prop];
+                                                            break;
+                                                        case "Effects":
+                                                            t[x + "Effects"] = char[property][prop];
+                                                            break;
+                                                        default:
+                                                            break;
+                                                    }
+                                                    
+                                                }
+                                            }
+                                            
+                                        } else if (property.match(/Feature\s*\d*/gi)!=null) {
+                                            // Import Features
+                                            
+                                            //i = Number(property.substring(7));
+
+                                            i=generateRowID();
+
+                                            for (var prop in char[property]){
+                                                if (char[property].hasOwnProperty(prop)){
+                                                    if(char[property][prop] == undefined || char[property][prop] === ""){
+                                                        continue;
+                                                    }
+                                                    x = "repeating_features_".concat(i).concat("_Feature_").concat(prop);
+                                                    t[x] = char[property][prop];
+                                                }
+                                            }
+                                            
+                                        } else if (property.match(/Ability\s*\d*/gi)!=null) {
+                                            
+                                            i=generateRowID();
+                                            for (var prop in char[property]){
+                                                if (char[property].hasOwnProperty(prop)){
+                                                    if(char[property][prop] == undefined || char[property][prop] === ""){
+                                                        continue;
+                                                    }
+                                                    x = "repeating_abilities_".concat(i).concat("_Ability_").concat(prop);
+                                                    t[x] = char[property][prop];
+                                                }
+                                            }
+                                            
+                                        } else if (property.match(/Edge\s*\d*/gi)!=null) {
+                                            
+                                            i=generateRowID();
+                                            for (var prop in char[property]){
+                                                if (char[property].hasOwnProperty(prop)){
+                                                    if(char[property][prop] == undefined || char[property][prop] === ""){
+                                                        continue;
+                                                    }
+                                                    x = "repeating_edges_".concat(i).concat("_Edge").concat(prop);
+                                                    t[x] = char[property][prop];
+                                                }
+                                            }
+                                             
+                                        } 
+                                        else if (property.match(/Capabilities/i)){
+                                            x = 0;
+                                            for (var prop in char[property]) {
+                                                if (char[property].hasOwnProperty(prop)) {
+                                                    if(char[property][prop] == undefined || char[property][prop] === ""){
+                                                        continue;
+                                                    }
+
+                                                    if (prop=="Overland"||prop=="Swim"||prop=="HJ"||prop=="LJ"||prop=="Power") {
+                                                        t[prop]=char[property][prop];
+                                                    }
+                                                }
+                                            }
+                                        } else if(property.match(/nickname/i)){
+                                            if(char[property] == undefined || char[property] === ""){
+                                                continue;
+                                            }
+                                            t["nickname"] = char[property];
+                                            
+                                        } else if(property.match(/struggle_type/i)){
+                                            if(char[property] == undefined || char[property] === ""){
+                                                continue;
+                                            }
+                                            t["Struggle_Type"] = char[property];
+                                            
+                                        } else if(property.match(/struggle_dtype/i)){
+                                            if(char[property] == undefined || char[property] === ""){
+                                                continue;
+                                            }
+                                            t["Struggle_Dtype"] = char[property];
+                                            
+                                        } else if(property.match(/struggle_db/i)){
+                                            if(char[property] == undefined || char[property] === ""){
+                                                continue;
+                                            }
+                                            t["Struggle_DB"] = parseInt(char[property],10)||0;
+                                            
+                                        } else if(property.match(/struggle_ac/i)){
+                                            if(char[property] == undefined || char[property] === ""){
+                                                continue;
+                                            }
+                                            t["Struggle_AC"] = parseInt(char[property],10)||0;
+                                            
+                                        } else if(property.match(/struggle_range/i)){
+                                            if(char[property] == undefined || char[property] === ""){
+                                                continue;
+                                            }
+                                            t["Struggle_Range"] = char[property];
+                                            
+                                        }else {
+                                            if(char[property] == undefined || char[property] === ""){
+                                                continue;
+                                            }
+                                            t[property]= char[property] ;
+                                        }
                                     }
-                                    x++;
-                                } else {
-                                    t={};
-                                    if (x<rcaps.length-1) {
-                                        t["repeating_capabilities_".concat(rcaps[x]).concat("_Capability")]=prop;
-                                        setAttrs(t);
-                                    } else {
-                                        i=generateRowID();
-                                        t["repeating_capabilities_".concat(i).concat("_Capability")]=prop;
-                                        setAttrs(t);
-                                    }
-                                    x++;
+                                    
+                                    
                                 }
-                            }
-                        }
-                    } else {
-                        t={};
-                        t[property]=char[property];
-                        setAttrs(t);}
-                }
-            }
-            });});});});});});
+                                
+                                setAttrs(t);
+                            });
+                        });
+                    });
+                });
+            });
         });
     };
 
     var statUp = function(){
-        getAttrs(["base_HP","HP_Bonus","HP","base_ATK","ATK_Bonus","ATK","ATK_Stage","base_DEF","DEF_Bonus","DEF","DEF_Stage","base_SPATK","SPATK_Bonus","SPATK","SPATK_Stage","base_SPDEF","SPDEF_Bonus","SPDEF","SPDEF_Stage","base_SPEED","SPEED_Bonus","SPEED","SPEED_Stage"], function(v) {
+        getAttrs(["base_HP","HP_Bonus","HP","HP_Nat","base_ATK","ATK_Bonus","ATK","ATK_Stage","ATK_Nat","base_DEF","DEF_Bonus","DEF","DEF_Stage","DEF_Nat","base_SPATK","SPATK_Bonus","SPATK","SPATK_Stage","SPATK_Nat","base_SPDEF","SPDEF_Bonus","SPDEF","SPDEF_Stage","SPDEF_Nat","base_SPEED","SPEED_Bonus","SPEED","SPEED_Stage","SPEED_Nat"], function(v) {
         setAttrs({
-          HP_total: 1*v.base_HP + 1*v.HP_Bonus + 1*v.HP,
-          ATK_total: Math.floor((1*v.base_ATK + 1*v.ATK_Bonus + 1*v.ATK)*v.ATK_Stage),
-          DEF_total: Math.floor((1*v.base_DEF*1 + 1*v.DEF_Bonus + v.DEF*1)*v.DEF_Stage),
-          SPATK_total: Math.floor((1*v.base_SPATK + 1*v.SPATK_Bonus + 1*v.SPATK)*v.SPATK_Stage),
-          SPDEF_total: Math.floor((1*v.base_SPDEF + 1*v.SPDEF_Bonus + 1*v.SPDEF)*v.SPDEF_Stage),
-          SPEED_total: Math.floor((v.base_SPEED*1 + 1*v.SPEED_Bonus + v.SPEED*1)*v.SPEED_Stage)
+          HP_total: 1*v.base_HP + 1*v.HP_Bonus + 1*v.HP + 1*v.HP_Nat,
+          ATK_total: Math.floor((1*v.base_ATK + 1*v.ATK_Bonus + 1*v.ATK + 1*v.ATK_Nat)*v.ATK_Stage),
+          DEF_total: Math.floor((1*v.base_DEF + 1*v.DEF_Bonus + 1*v.DEF + 1*v.DEF_Nat)*v.DEF_Stage),
+          SPATK_total: Math.floor((1*v.base_SPATK + 1*v.SPATK_Bonus + 1*v.SPATK + 1*v.SPATK_Nat)*v.SPATK_Stage),
+          SPDEF_total: Math.floor((1*v.base_SPDEF + 1*v.SPDEF_Bonus + 1*v.SPDEF + 1*v.SPDEF_Nat)*v.SPDEF_Stage),
+          SPEED_total: Math.floor((1*v.base_SPEED + 1*v.SPEED_Bonus + 1*v.SPEED + 1*v.SPEED_Nat)*v.SPEED_Stage)
         });
         });
     };
@@ -1333,6 +1434,84 @@ on("change:fixmoves change:struggle_type change:move1_type change:move2_type cha
         });
         
     });
+
+const ptuChart = {
+    Normal: { Fighting: 1, Ghost: 0 },
+    Fighting: { Flying: 1, Psychic: 1, Fairy: 1, Rock: -1, Bug: -1, Dark: -1 },
+    Flying: { Rock: 1, Electric: 1, Ice: 1, Fighting: -1, Bug: -1, Grass: 0 },
+    Poison: { Ground: 1, Psychic: 1, Fighting: -1, Poison: -1, Bug: -1, Grass: -1, Fairy: -1 },
+    Ground: { Water: 1, Grass: 1, Ice: 1, Poison: -1, Rock: -1, Electric: 0 },
+    Rock: { Fighting: 1, Ground: 1, Steel: 1, Water: 1, Grass: 1, Normal: -1, Flying: -1, Poison: -1, Fire: -1 },
+    Bug: { Flying: 1, Rock: 1, Fire: 1, Fighting: -1, Ground: -1, Grass: -1 },
+    Ghost: { Ghost: 1, Dark: 1, Poison: -1, Bug: -1, Normal: 0, Fighting: 0 },
+    Steel: { Fighting: 1, Ground: 1, Fire: 1, Normal: -1, Flying: -1, Rock: -1, Bug: -1, Steel: -1, Grass: -1, Psychic: -1, Ice: -1, Dragon: -1, Fairy: -1, Poison: 0 },
+    Fire: { Ground: 1, Rock: 1, Water: 1, Bug: -1, Steel: -1, Fire: -1, Grass: -1, Ice: -1, Fairy: -1 },
+    Water: { Grass: 1, Electric: 1, Steel: -1, Fire: -1, Water: -1, Ice: -1 },
+    Grass: { Flying: 1, Poison: 1, Bug: 1, Fire: 1, Ice: 1, Ground: -1, Water: -1, Grass: -1, Electric: -1 },
+    Electric: { Ground: 1, Flying: -1, Steel: -1, Electric: -1 },
+    Psychic: { Bug: 1, Ghost: 1, Dark: 1, Fighting: -1, Psychic: -1 },
+    Ice: { Fighting: 1, Rock: 1, Steel: 1, Fire: 1, Ice: -1 },
+    Dragon: { Ice: 1, Dragon: 1, Fairy: 1, Fire: -1, Water: -1, Grass: -1, Electric: -1 },
+    Dark: { Fighting: 1, Bug: 1, Fairy: 1, Ghost: -1, Dark: -1, Psychic: 0 },
+    Fairy: { Poison: 1, Steel: 1, Fighting: -1, Bug: -1, Dark: -1, Dragon: 0 }
+};
+
+const stepToMult = { "-3": "x0.125", "-2": "x0.25", "-1": "x0.5", "0": "x1", "1": "x1.5", "2": "x2", "3": "x3" };
+
+on("change:mtype1 change:mtype2 change:mtype3 change:inverse_mode", function() {
+    getAttrs(["mtype1", "mtype2", "mtype3", "inverse_mode"], function(v) {
+        const activeDefTypes = [v.mtype1, v.mtype2, v.mtype3].filter(t => t && t !== "None");
+        const isInverse = parseInt(v.inverse_mode) === 1;
+        const allTypes = Object.keys(ptuChart);
+        let weak = [], resist = [], immune = [];
+
+        // PTU Step to Multiplier Mapping
+        const stepToMult = { 
+            "-3": "x0.125", "-2": "x0.25", "-1": "x0.5", 
+            "0": "x1", "1": "x1.5", "2": "x2", "3": "x3" 
+        };
+
+        allTypes.forEach(atkType => {
+            let totalSteps = 0;
+            let hasImmunity = false;
+
+            activeDefTypes.forEach(defType => {
+                const mod = ptuChart[defType][atkType];
+                
+                if (isInverse) {
+                    // Inverse Logic: Immunities (0) become +2 steps (x2)
+                    if (mod === 0) {
+                        totalSteps += 2;
+                    } else if (mod !== undefined) {
+                        // Flip the steps: +1 becomes -1, -1 becomes +1
+                        totalSteps -= mod;
+                    }
+                } else {
+                    // Regular Logic: 0 is a blanket immunity
+                    if (mod === 0) hasImmunity = true;
+                    if (mod !== undefined) totalSteps += mod;
+                }
+            });
+
+            // Cap the steps between -3 and 3 for PTU limits
+            totalSteps = Math.max(-3, Math.min(3, totalSteps));
+
+            if (!isInverse && hasImmunity) {
+                immune.push(`${atkType} (x0)`);
+            } else if (totalSteps > 0) {
+                weak.push(`${atkType} (${stepToMult[totalSteps]})`);
+            } else if (totalSteps < 0) {
+                resist.push(`${atkType} (${stepToMult[totalSteps]})`);
+            }
+        });
+
+        setAttrs({
+            weak_list: weak.join(", ") || "None",
+            res_list: resist.join(", ") || "None",
+            imm_list: isInverse ? "N/A (Inverse Mode)" : (immune.join(", ") || "None")
+        });
+    });
+});
 </script>
 <rolltemplate class="sheet-rolltemplate-PTU">
 	<div class="wrapper sheet-style-{{template-style}}">
@@ -2033,6 +2212,12 @@ on("change:fixmoves change:struggle_type change:move1_type change:move2_type cha
                 <td align="center">Allocated</th>
                 <td align="center">Stage</th>
                 <td align="center">Current</th>
+				<input type="hidden" name="attr_HP_Nat" class="sheet-move-type" value="0" />
+				<input type="hidden" name="attr_ATK_Nat" class="sheet-move-type" value="0" />
+				<input type="hidden" name="attr_DEF_Nat" class="sheet-move-type" value="0" />
+				<input type="hidden" name="attr_SPATK_Nat" class="sheet-move-type" value="0" />
+				<input type="hidden" name="attr_SPDEF_Nat" class="sheet-move-type" value="0" />
+				<input type="hidden" name="attr_SPEED_Nat" class="sheet-move-type" value="0" />
             </tr></span>
             <tr>
                 <td class="sheet-table-header">HP</td>
@@ -2391,7 +2576,7 @@ on("change:fixmoves change:struggle_type change:move1_type change:move2_type cha
             </tr>
             <tr>
                 <td class="sheet-table-header">Move Name:</td>
-                <td><input class="sheet-shortfield" type="text" name="attr_Struggle_Name" value="Struggle"/></td>
+                <td><input class="sheet-shortfield" type="text" name="attr_Struggle_Name" value="Basic Attack"/></td>
             </tr>
             <tr class="sheet-table-moves">
                 <td class="sheet-table-header">Frequency:</td>
@@ -2464,7 +2649,7 @@ on("change:fixmoves change:struggle_type change:move1_type change:move2_type cha
             <div class="sheet-table sheet-movetable-item">
 			<input type="checkbox" class="sheet-arrow" name="attr_Move_Hide"/><span></span>
 			<input type="hidden" name="attr_Move_Type" class="sheet-move-type" value="Normal" />
-            <h4 class="sheet-movehead">Move <span class="sheet-movecounter"></span></h4>
+            <h4 class="sheet-movehead">Move <span class="sheet-movecounter"></span> <input type="checkbox" class="sheet-chkbx" value=1 name="attr_MoveActive" checked /></h4>
 			<table class="sheet-table">
             <tr hidden>
                 <input class="sheet-shortfield" type="hidden" value=0 name="attr_Move_pmod"/>
@@ -2549,10 +2734,6 @@ on("change:fixmoves change:struggle_type change:move1_type change:move2_type cha
                 <td class="sheet-table-header">Notes:</td>
                 <td><input class="sheet-shortfield" name="attr_Move_Notes" type="text"/></td>
             </tr>
-            <tr class="sheet-table-moves">
-                <td class="sheet-table-header">Active:</td>
-				<td><input type="checkbox" class="sheet-chkbx" value=1 name="attr_MoveActive" checked /></td>
-			</tr>
         </table>
 			</div>
 			<br>
@@ -2570,7 +2751,7 @@ on("change:fixmoves change:struggle_type change:move1_type change:move2_type cha
             <div class="sheet-table sheet-movetable-item">
 			<input type="checkbox" class="sheet-arrow" name="attr_Spell_Hide"/><span></span>
 			<input type="hidden" name="attr_Spell_Type" class="sheet-move-type" value="Spiritual" />
-            <h4 class="sheet-movehead">Spell <span class="sheet-movecounter"></span></h4>
+            <h4 class="sheet-movehead">Spell <span class="sheet-movecounter"> <input type="checkbox" class="sheet-chkbx" value=1 name="attr_SpellActive" checked /></span></h4>
 			<table class="sheet-table">
             <tr hidden>
                 <input class="sheet-shortfield" type="hidden" value=0 name="attr_Spell_pmod"/>
@@ -2637,10 +2818,6 @@ on("change:fixmoves change:struggle_type change:move1_type change:move2_type cha
                 <td class="sheet-table-header">Notes:</td>
                 <td><input class="sheet-shortfield" name="attr_Spell_Notes" type="text"/></td>
             </tr>
-            <tr class="sheet-table-moves">
-                <td class="sheet-table-header">Active:</td>
-				<td><input type="checkbox" class="sheet-chkbx" value=1 name="attr_SpellActive" checked /></td>
-			</tr>
         </table>
 			</div>
 			<br>
@@ -2869,7 +3046,7 @@ on("change:fixmoves change:struggle_type change:move1_type change:move2_type cha
         <fieldset class="repeating_edges">
             <br/>
             <input type="checkbox" class="sheet-arrow" name="attr_EdgeHide"/><span></span>
-            <h4 class="sheet-minihead" style="border-radius: 20px 20px 0px 0px;">Edge  <span class="sheet-counter"></span></h4>
+            <h4 class="sheet-minihead" style="border-radius: 20px 20px 0px 0px;">Edge  <span class="sheet-counter">  <input type="checkbox" class="sheet-chkbx" value=1 name="attr_EdgeActive" checked /></span></h4>
             <table class="sheet-table">
                 <tr>
                     <td class="sheet-table-header">Name:</td>
@@ -2917,7 +3094,7 @@ on("change:fixmoves change:struggle_type change:move1_type change:move2_type cha
         <fieldset class="repeating_features">
             <br/>
             <input type="checkbox" class="sheet-arrow" name="attr_Feature_Hide"/><span></span>
-            <h4 class="sheet-minihead" style="border-radius: 20px 20px 0px 0px;">Feature  <span class="sheet-abilitycounter"></h4>
+            <h4 class="sheet-minihead" style="border-radius: 20px 20px 0px 0px;">Feature <span class="sheet-abilitycounter">  <input type="checkbox" class="sheet-chkbx" value=1 name="attr_FeatActive" checked /></h4>
             <table class="sheet-table">
                 <tr>
                     <td class="sheet-table-header">Name:</td>
@@ -2956,7 +3133,7 @@ on("change:fixmoves change:struggle_type change:move1_type change:move2_type cha
 		<div class="sheet-repeating-fields">
         <fieldset class="repeating_abilities">
             <input type="checkbox" class="sheet-arrow" name="attr_Ability_Hide"/><span></span>
-            <h4 class="sheet-minihead" style="border-radius: 20px 20px 0px 0px;">Ability  <span class="sheet-abilitycounter"></h4>
+            <h4 class="sheet-minihead" style="border-radius: 20px 20px 0px 0px;">Ability  <span class="sheet-abilitycounter">  <input type="checkbox" class="sheet-chkbx" value=1 name="attr_AbilActive" checked /></h4>
             <table class="sheet-table">
                 <tr>
                     <td class="sheet-table-header">Name:</td>
@@ -3159,7 +3336,7 @@ on("change:fixmoves change:struggle_type change:move1_type change:move2_type cha
 		</div>
 </div>
 <div class="sheet-tab11">
-	<h3 class="sheet-header">Unique Skills&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Action Points: <input type="number" step="any" name="attr_AP" />/<input type="number" step="any" name="attr_AP_max" /></h3>
+	<h3 class="sheet-header">Unique Skills &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Action Points: <input type="number" step="any" name="attr_AP" />/<input type="number" step="any" name="attr_AP_max" /></h3>
 	<br/>
 	<div class="sheet-3colrow">
 		<div class="sheet-col">
@@ -3728,7 +3905,6 @@ on("change:fixmoves change:struggle_type change:move1_type change:move2_type cha
 <div class="sheet-tab9">
 <div class="sheet-3colrow">
 	<h3 class="sheet-header">Type Matchups</h3>
-		<br/>
 		<div class="sheet-col">
 			<br/><div>
 			<h4 class="sheet-typehead" style="background:linear-gradient(to top, #a9a878, #ffffff)">Normal</h4>
@@ -3897,7 +4073,55 @@ on("change:fixmoves change:struggle_type change:move1_type change:move2_type cha
 			</table>
 			</div>
 		</div>
-</div>
+</div><br/>
+<h3 class="sheet-header">Matchup Calculator</h3>
+<table class="sheet-table" style="border-radius: 0px 0px 0px 0px; text-align: center;">
+	<tr><td>
+        <select name="attr_mtype1" class="sheet-shortfield2" style="width:100px;">
+            <option value="None" selected>Type 1</option>
+            <option value="Normal">Normal</option><option value="Fire">Fire</option>
+            <option value="Water">Water</option><option value="Grass">Grass</option>
+            <option value="Electric">Electric</option><option value="Ice">Ice</option>
+            <option value="Fighting">Fighting</option><option value="Poison">Poison</option>
+            <option value="Ground">Ground</option><option value="Flying">Flying</option>
+            <option value="Psychic">Psychic</option><option value="Bug">Bug</option>
+            <option value="Rock">Rock</option><option value="Ghost">Ghost</option>
+            <option value="Dragon">Dragon</option><option value="Steel">Steel</option>
+            <option value="Dark">Dark</option><option value="Fairy">Fairy</option>
+        </select>
+        <select name="attr_mtype2" class="sheet-shortfield2" style="width:100px;">
+            <option value="None" selected>Type 2</option>
+            <option value="Normal">Normal</option><option value="Fire">Fire</option>
+            <option value="Water">Water</option><option value="Grass">Grass</option>
+            <option value="Electric">Electric</option><option value="Ice">Ice</option>
+            <option value="Fighting">Fighting</option><option value="Poison">Poison</option>
+            <option value="Ground">Ground</option><option value="Flying">Flying</option>
+            <option value="Psychic">Psychic</option><option value="Bug">Bug</option>
+            <option value="Rock">Rock</option><option value="Ghost">Ghost</option>
+            <option value="Dragon">Dragon</option><option value="Steel">Steel</option>
+            <option value="Dark">Dark</option><option value="Fairy">Fairy</option>
+            </select>
+        <select name="attr_mtype3" class="sheet-shortfield2" style="width:100px;">
+            <option value="None" selected>Type 3</option>
+            <option value="Normal">Normal</option><option value="Fire">Fire</option>
+            <option value="Water">Water</option><option value="Grass">Grass</option>
+            <option value="Electric">Electric</option><option value="Ice">Ice</option>
+            <option value="Fighting">Fighting</option><option value="Poison">Poison</option>
+            <option value="Ground">Ground</option><option value="Flying">Flying</option>
+            <option value="Psychic">Psychic</option><option value="Bug">Bug</option>
+            <option value="Rock">Rock</option><option value="Ghost">Ghost</option>
+            <option value="Dragon">Dragon</option><option value="Steel">Steel</option>
+            <option value="Dark">Dark</option><option value="Fairy">Fairy</option>
+            </select>
+			<input type="checkbox" class="sheet-chkbx" name="attr_inverse_mode" value="1"/> Inverse
+    </td></tr>
+	</table>
+    <table class="sheet-table">
+        <tr><td class="sheet-table-header">Weak:</td><td style="width: 90%;"><span name="attr_weak_list"></span></td></tr>
+        <tr><td class="sheet-table-header">Resist:</td><td style="width: 90%;"><span name="attr_res_list"></span></td></tr>
+        <tr><td class="sheet-table-header">Immune:</td><td style="width: 90%;"><span name="attr_imm_list"></span></td></tr>
+		<tr><td>&nbsp;</td></tr>
+	</table>
 </div>
 <div class="sheet-tab10">
     <h3 class="sheet-header">Support Checks</h3>
@@ -4016,6 +4240,17 @@ on("change:fixmoves change:struggle_type change:move1_type change:move2_type cha
     </table>
 </div>
 </td></table>
+<h3 class="sheet-header"><input type="checkbox" class="sheet-importvis sheet-expand" /> Import JSON</h3>
+        <div class="sheet-importsvis">
+		<table class="sheet-table">
+			<tr style="text-align:center; font-size:12px;"><td>This will import the JSON generated from <u>PokéSheets Character Sheet</u> at https://ptuexodus.will-step.com/pokemon to fill the sheet with all the information provided by the website.</td></tr>
+			<tr style="text-align:center; font-size:12px;"><td class="sheet-red">!WARNING! THIS WILL REPLACE EVERYTHING ON YOUR SHEET WITH THE NEW INFORMATION PROVIDED! ONLY USE THIS WITH A BLANK SHEET TO GENERATE WILD POKEMON!</td></tr>
+			<tr style="text-align:center; font-size:12px;"><td>Move information is generated for the official PTU data, and does not take into account STAB mechanics for this sheet, so it's advised to use the Move Filler scripts provided on the <u>Echoed Waves PTU Sheet</u> and replace the moves inserted by this generator.</td></tr>
+			<tr><td><button type="action" class="sheet-jimport" name="act_import">Import</button></td></tr>
+			<tr><td><textarea class="sheet-textarea-b" name="attr_jsonimport"></textarea></td></tr>
+		</table>
+		</div>
+
 </div>
 </div>
 
@@ -4219,9 +4454,11 @@ on("change:fixmoves change:struggle_type change:move1_type change:move2_type cha
     </div>
     <div class="sheet-col">
 	<button type="roll" class="sheet-role" value="@{whisper} @{roleroll}" name="roll_roleroll">Use Role Skill!</button>
-        <h3 class="sheet-header">Abilities</h3>
+        <h3 class="sheet-header">Abilities &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; All Active? <input type="checkbox" class="sheet-chkbx" value=1 name="attr_AbilsActive" checked /></h3>
 		<div class="sheet-repeating-fields">
         <fieldset class="repeating_abilities">
+		<input type="checkbox" class="sheet-activemovec" value=1 name="attr_AbilActive" style="display:none;" checked />
+		<div class="sheet-activemove">
             <input type="checkbox" class="sheet-arrow" name="attr_Ability_Hide"/><span></span>
             <h4 class="sheet-minihead" style="border-radius: 20px 20px 0px 0px;">Ability  <span class="sheet-abilitycounter"></h4>
             <table class="sheet-table">
@@ -4250,12 +4487,13 @@ on("change:fixmoves change:struggle_type change:move1_type change:move2_type cha
                     <td><button type="roll" value="@{whisper} &{template:PTU@{Distortion}} {{dis=Ability}} {{desc=@{Ability_Info}}} {{nick=@{nickname}}} {{name=@{Ability_Name}}} {{freq=@{Ability_Freq}}} {{tar=@{Ability_Target}}} {{tri=@{Ability_Trigger}}}" name="roll_AbilRoll" class="sheet-display" /></td>
                 </tr>
             </table>
-            <br/>
+			</div>
         </fieldset>
 		</div>
 	</div>
 </div>
-        <h3 class="sheet-header">Moves &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; All Active? <input type="checkbox" class="sheet-chkbx" value=1 name="attr_MovesActive" checked /></h3>
+        <h3 class="sheet-header"><input type="checkbox" class="sheet-movevis sheet-expand" name="attr_MoveVis" checked /> Moves &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; All Active? <input type="checkbox" class="sheet-chkbx" value=1 name="attr_MovesActive" checked /></h3>
+		<div class="sheet-movesvis">
 		<div class="sheet-movestable">
 		<div class="sheet-table sheet-movetable-item">
 		<input type="checkbox" class="sheet-arrow" name="attr_Struggle_Hide"/><span></span>
@@ -4271,7 +4509,7 @@ on("change:fixmoves change:struggle_type change:move1_type change:move2_type cha
             </tr>
             <tr>
                 <td class="sheet-table-header">Move Name:</td>
-                <td><input class="sheet-shortfield" type="text" name="attr_Struggle_Name" value="Struggle"/></td>
+                <td><input class="sheet-shortfield" type="text" name="attr_Struggle_Name" value="Basic Attack"/></td>
             </tr>
             <tr class="sheet-table-moves">
                 <td class="sheet-table-header">Frequency:</td>
@@ -4437,10 +4675,11 @@ on("change:fixmoves change:struggle_type change:move1_type change:move2_type cha
 		</fieldset>
 		</div>
 		</div>
-
-        <div class="sheet-tab sheet-spelltab" style="width:100%;">
+		</div>
+        <div class="sheet-spelltab" style="width:100%;">
 		<input type="checkbox" class="sheet-spellcaster" value=1 name="attr_Spellcaster" style="display:none;" checked />
-		<h3 class="sheet-header">Spells &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; All Active? <input type="checkbox" class="sheet-chkbx" value=1 name="attr_SpellsActive" checked /></h3>
+		<h3 class="sheet-header"><input type="checkbox" class="sheet-spellvis sheet-expand" name="attr_SpellVis" checked /> Spells &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; All Active? <input type="checkbox" class="sheet-chkbx" value=1 name="attr_SpellsActive" checked /></h3>
+		<div class="sheet-spellsvis">
 		<div class="sheet-movestable">
 		<div class="sheet-table sheet-movetable-item">
 		</div>
@@ -4520,12 +4759,97 @@ on("change:fixmoves change:struggle_type change:move1_type change:move2_type cha
             </tr>
         </table>
 			</div>
-			<br>
 		</fieldset>
 		</div>
 		</div>
 		</div>
-		<h3 class="sheet-header">Unique Skills&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Action Points: <input type="number" step="any" name="attr_AP" />/<input type="number" step="any" name="attr_AP_max" /></h3>
+		</div>
+		<h3 class="sheet-header"><input type="checkbox" class="sheet-featvis sheet-expand" name="attr_FeatVis" checked /> Features &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; All Active? <input type="checkbox" class="sheet-chkbx" value=1 name="attr_FeatsActive" checked /></h3>
+        <div class="sheet-featsvis">
+		<div class="sheet-movestable">
+		<div class="sheet-table sheet-movetable-item">
+		</div>
+		<div class="sheet-repeating-fields">
+        <fieldset class="repeating_features">
+		<input type="checkbox" class="sheet-activemovec" value=1 name="attr_FeatActive" style="display:none;" checked />
+		<div class="sheet-activemove">
+            <input type="checkbox" class="sheet-arrow" name="attr_Feature_Hide"/><span></span>
+            <h4 class="sheet-minihead" style="border-radius: 20px 20px 0px 0px;">Feature  <span class="sheet-abilitycounter"></h4>
+            <table class="sheet-table">
+                <tr>
+                    <td class="sheet-table-header">Name:</td>
+                    <td><input class="sheet-shortfield" name="attr_Feature_Name" type="text"></td>
+                </tr>
+				<tr class="sheet-featlist">
+					<td class="sheet-table-header">Prerequisites:</td>
+					<td><input class="sheet-shortfield" name="attr_Feature_Prereq" type="text"></td>
+				</tr>
+                <tr class="sheet-featlist">
+                    <td class="sheet-table-header">Frequency:</td>
+                    <td><input class="sheet-shortfield" name="attr_Feature_Freq" type="text"></td>
+                </tr>
+                <tr class="sheet-featlist">
+                    <td class="sheet-table-header">Trigger:</td>
+                    <td><input class="sheet-shortfield" name="attr_Feature_Trigger" type="text"></td>
+                </tr>
+                <tr class="sheet-featlist">
+                    <td class="sheet-table-header">Target:</td>
+                    <td><input class="sheet-shortfield" name="attr_Feature_Target" type="text"></td>
+                </tr>
+                <tr class="sheet-featlist">
+                    <td class="sheet-table-header">Effects:</td>
+                    <td><textarea class="sheet-textarea-b" name="attr_Feature_Info"></textarea></td>
+                </tr>
+                <tr>
+                    <td class="sheet-table-header">Display:</td>
+                    <td><button type="roll" value="@{whisper} &{template:PTU@{Distortion}} {{dis=Feature}} {{desc=@{Feature_Info}}} {{nick=@{nickname}}} {{name=@{Feature_Name}}} {{freq=@{Feature_Freq}}} {{tar=@{Feature_Target}}} {{tri=@{Feature_Trigger}}}" name="roll_FeatRoll" class="sheet-display" /></td>
+                </tr>
+            </table>
+		</div>
+        </fieldset>
+		</div>
+		</div>
+		</div>
+		<h3 class="sheet-header"><input type="checkbox" class="sheet-edgevis sheet-expand" name="attr_EdgeVis" checked /> Edges &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; All Active? <input type="checkbox" class="sheet-chkbx" value=1 name="attr_EdgesActive" checked /></h3>
+        <div class="sheet-edgesvis">
+		<div class="sheet-movestable">
+		<div class="sheet-table sheet-movetable-item">
+		</div>
+		<div class="sheet-repeating-fields">
+        <fieldset class="repeating_edges">
+		<input type="checkbox" class="sheet-activemovec" value=1 name="attr_EdgeActive" style="display:none;" checked />
+		<div class="sheet-activemove">
+            <input type="checkbox" class="sheet-arrow" name="attr_EdgeHide"/><span></span>
+            <h4 class="sheet-minihead" style="border-radius: 20px 20px 0px 0px;">Edge  <span class="sheet-counter"></span></h4>
+            <table class="sheet-table">
+                <tr>
+                    <td class="sheet-table-header">Name:</td>
+                    <td><input class="sheet-shortfield" name="attr_EdgeName" type="text"></td>
+                </tr>
+                <tr class="sheet-featlist">
+                    <td class="sheet-table-header">Prerequisites:</td>
+                    <td><input class="sheet-shortfield" name="attr_EdgePrereq" type="text"></td>
+                </tr>
+                <tr class="sheet-featlist">
+                    <td class="sheet-table-header">TP Cost:</td>
+                    <td><input class="sheet-shortfield" name="attr_EdgeCost" type="text"></td>
+                </tr>
+                <tr class="sheet-featlist">
+                    <td class="sheet-table-header">Effects:</td>
+                    <td><textarea class="sheet-textarea-b" name="attr_EdgeInfo"></textarea></td>
+                </tr>
+                  <tr>
+                    <td class="sheet-table-header">Display:</td>
+                    <td><button type="roll" value="@{whisper} &{template:PTU@{Distortion}} {{dis=Edge}} {{desc=@{EdgeInfo}}} {{nick=@{nickname}}} {{name=@{EdgeName}}}" name="roll_EdgeRoll" class="sheet-display" /></td>
+                  </tr>
+            </table>
+			</div>
+        </fieldset>
+	</div>
+	</div>
+	</div>
+	<h3 class="sheet-header"><input type="checkbox" class="sheet-uniquevis sheet-expand" name="attr_UniqueVis" checked /> Unique Skills &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Action Points: <input type="number" step="any" name="attr_AP" />/<input type="number" step="any" name="attr_AP_max" /></h3>
+    <div class="sheet-uniquesvis">
 		<div class="sheet-uskill">
 		<input type="checkbox" class="sheet-uskillc1" value=1 name="attr_SkillA1_Active" style="display:none;"/>
 		<input type="checkbox" class="sheet-uskillc2" value=1 name="attr_SkillA2_Active" style="display:none;"/>
@@ -5094,34 +5418,47 @@ on("change:fixmoves change:struggle_type change:move1_type change:move2_type cha
 					<td><button type="roll" value="@{whisper} &{template:PTU@{Distortion}} {{dis=Unique Skill}} {{desc=@{SkillC9Info}}} {{cost=@{SkillC9Cost} AP}} {{nick=@{nickname}}} {{name=@{SkillC9Name}}}" name="roll_AbilRoll" class="sheet-display" /></td>
 				</tr>
 			</table></div>
-		</div><div class="sheet-row">
-    <h3 class="sheet-header">Inventory</h3>
+		</div>
+		</div>
+		<div class="sheet-row">
+		<br/>
+    <h3 class="sheet-header"><input type="checkbox" class="sheet-itemvis sheet-expand" name="attr_ItemVis" checked /> Inventory</h3>
+        <div class="sheet-itemsvis">
     <table class="sheet-table" align = "center" style="border-radius: 0px 0px 0px 0px;">
 		<tr class="sheet-table-items">
             <td class="sheet-table-header" align = "center">Money</td>
             <td align = "center"><img src="https://files.d20.io/images/247941939/4Odzj88HIUw8cPPxIqz9yA/max.png"><input type="number" step="any" name="attr_Cash" class="sheet-shortfield"></td>
         </tr>
     </table>
+		<div class="sheet-movestable">
 		<div class="sheet-repeating-fields">
     <fieldset class="repeating_inventory">
         <table class="sheet-table" style = "width:100%;border-radius: 0px 0px 0px 0px;">
 			<tr>
                 <th>Item  <span class="sheet-counter"> Name</th>
-                <th>Description</th>
                 <th>Amount</th>
 				<th> Show</th>
             </tr>
 			<tr>
-                <td class="sheet-shortfield6" style = "width:45%;"><input type="text" class="sheet-shortfield" name="attr_InventoryName" /></td>
-                <td class="sheet-shortfield7" style = "width:45%;"><input type="text" class="sheet-shortfield" name="attr_InventoryDesc" /></td>
-                <td class="sheet-shortfield8" style = "width:5%;"><input type="number" step="any" class="sheet-shortfield" name="attr_InventoryQuantity" /></td>
+                <td class="sheet-shortfield6" style = "width:75%;"><input type="text" class="sheet-shortfield" name="attr_InventoryName" /></td>
+                <td class="sheet-shortfield8" style = "width:20%;"><input type="number" step="any" class="sheet-shortfield" name="attr_InventoryQuantity" /></td>
 				<td><button type="roll" value="@{whisper} &{template:PTU@{Distortion}} {{dis=Item}} {{desc=@{InventoryDesc}}} {{nick=@{nickname}}} {{name=@{InventoryName}}}" name="roll_ItemRoll" class="sheet-display" /></td>
             </tr>
         </table>
+        <table class="sheet-table" style = "width:100%;border-radius: 0px 0px 0px 0px;">
+			<tr>
+                <td class="sheet-shortfield6" style = "width:30%;"><b>Description:</b></td>
+                <td class="sheet-shortfield7" style = "width:65%;"><input type="text" class="sheet-shortfield" name="attr_InventoryDesc" /></td>
+            </tr>
+        </table>
+		<br/>
     </fieldset>
 		</div>
+		</div>
 	</div>
-    <h3 class="sheet-header">Skills</h3>
+	</div>
+    <h3 class="sheet-header"><input type="checkbox" class="sheet-skillvis sheet-expand" name="attr_SkillVis" checked /> Skills</h3>
+        <div class="sheet-skillsvis">
     <table class="sheet-left-half-table">
         <tr align = "center" class="sheet-table-skills">
             <th class="sheet-minihead">Skill Name</th>
@@ -5245,9 +5582,12 @@ on("change:fixmoves change:struggle_type change:move1_type change:move2_type cha
             <td><input type="number" step="any" name="attr_SkillBonusTotal" value="[[@{Acrobatics_bonus}+@{Athletics_bonus}+@{Combat_bonus}+@{Intimidate_bonus}+@{Stealth_bonus}+@{Survival_bonus}+@{GeneralEducation_bonus}+@{MedicineEducation_bonus}+@{OccultEducation_bonus}+@{PokemonEducation_bonus}+@{TechnologyEducation_bonus}+@{Guile_bonus}+@{Perception_bonus}+@{Charm_bonus}+@{Command_bonus}+@{Focus_bonus}+@{Intuition_bonus}]]" disabled="true"/></td>
         </tr>
     </table>
+	</div>
+<br/>
 <div class="sheet-3colrow"></div>
 <div class="sheet-3colrow">
-	<h3 class="sheet-header">Type Matchups</h3>
+	<h3 class="sheet-header"><input type="checkbox" class="sheet-matchvis sheet-expand" name="attr_MatchVis" checked /> Type Matchups</h3>
+        <div class="sheet-matchsvis">
 		<div class="sheet-col">
 			<div>
 			<h4 class="sheet-typehead" style="background:linear-gradient(to top, #a9a878, #ffffff)">Normal</h4>
@@ -5416,12 +5756,66 @@ on("change:fixmoves change:struggle_type change:move1_type change:move2_type cha
 			</table>
 			</div>
 		</div>
+		</div>
 </div>
-<h3 class="sheet-header">Special Notes</h3>
-        <table class="sheet-table">
+<h3 class="sheet-header"><input type="checkbox" class="sheet-matchupvis sheet-expand" name="attr_MatchupVis" checked /> Matchup Calculator</h3>
+<div class="sheet-matchupsvis">
+<table class="sheet-table" style="border-radius: 0px 0px 0px 0px; text-align: center;">
+	<tr><td>
+        <select name="attr_mtype1" class="sheet-shortfield2" style="width:100px;">
+            <option value="None" selected>Type 1</option>
+            <option value="Normal">Normal</option><option value="Fire">Fire</option>
+            <option value="Water">Water</option><option value="Grass">Grass</option>
+            <option value="Electric">Electric</option><option value="Ice">Ice</option>
+            <option value="Fighting">Fighting</option><option value="Poison">Poison</option>
+            <option value="Ground">Ground</option><option value="Flying">Flying</option>
+            <option value="Psychic">Psychic</option><option value="Bug">Bug</option>
+            <option value="Rock">Rock</option><option value="Ghost">Ghost</option>
+            <option value="Dragon">Dragon</option><option value="Steel">Steel</option>
+            <option value="Dark">Dark</option><option value="Fairy">Fairy</option>
+        </select>
+        <select name="attr_mtype2" class="sheet-shortfield2" style="width:100px;">
+            <option value="None" selected>Type 2</option>
+            <option value="Normal">Normal</option><option value="Fire">Fire</option>
+            <option value="Water">Water</option><option value="Grass">Grass</option>
+            <option value="Electric">Electric</option><option value="Ice">Ice</option>
+            <option value="Fighting">Fighting</option><option value="Poison">Poison</option>
+            <option value="Ground">Ground</option><option value="Flying">Flying</option>
+            <option value="Psychic">Psychic</option><option value="Bug">Bug</option>
+            <option value="Rock">Rock</option><option value="Ghost">Ghost</option>
+            <option value="Dragon">Dragon</option><option value="Steel">Steel</option>
+            <option value="Dark">Dark</option><option value="Fairy">Fairy</option>
+            </select>
+        <select name="attr_mtype3" class="sheet-shortfield2" style="width:100px;">
+            <option value="None" selected>Type 3</option>
+            <option value="Normal">Normal</option><option value="Fire">Fire</option>
+            <option value="Water">Water</option><option value="Grass">Grass</option>
+            <option value="Electric">Electric</option><option value="Ice">Ice</option>
+            <option value="Fighting">Fighting</option><option value="Poison">Poison</option>
+            <option value="Ground">Ground</option><option value="Flying">Flying</option>
+            <option value="Psychic">Psychic</option><option value="Bug">Bug</option>
+            <option value="Rock">Rock</option><option value="Ghost">Ghost</option>
+            <option value="Dragon">Dragon</option><option value="Steel">Steel</option>
+            <option value="Dark">Dark</option><option value="Fairy">Fairy</option>
+            </select>
+			<input type="checkbox" class="sheet-chkbx" name="attr_inverse_mode" value="1" /> Inverse
+    </td></tr>
+	</table>
+    <table class="sheet-table">
+        <tr><td class="sheet-table-header">Weak:</td><td style="width: 90%;"><span name="attr_weak_list"></span></td></tr>
+        <tr><td class="sheet-table-header">Resist:</td><td style="width: 90%;"><span name="attr_res_list"></span></td></tr>
+        <tr><td class="sheet-table-header">Immune:</td><td style="width: 90%;"><span name="attr_imm_list"></span></td></tr>
+		<tr><td>&nbsp;</td></tr>
+	</table>
+</div>
+<h3 class="sheet-header"><input type="checkbox" class="sheet-notevis sheet-expand" name="attr_NoteVis" checked /> Special Notes</h3>
+        <div class="sheet-notesvis">
+		<table class="sheet-table">
                <td><textarea class="sheet-textarea-b" name="attr_SpecialNotes"></textarea></td>
 		</table>
-    <h3 class="sheet-header">Support Checks</h3>
+		</div>
+    <h3 class="sheet-header"><input type="checkbox" class="sheet-suppvis sheet-expand" name="attr_SuppVis" checked /> Support Checks</h3>
+        <div class="sheet-suppsvis">
     <table class="sheet-table"><td>
 <div class="sheet-row">
     <table>
@@ -5537,4 +5931,6 @@ on("change:fixmoves change:struggle_type change:move1_type change:move2_type cha
     </table>
 </div>
 </td></table>
+</div>
+</div>
 </div>
