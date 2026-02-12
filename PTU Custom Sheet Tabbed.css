@@ -10,6 +10,11 @@ input[type='number'] {
     margin: 0;
     } /* Remove arrows from numerical boxes */
 
+.sheet-red {
+	color: #ff0000;
+	font-weight: bold;
+}
+
 input.sheet-oldtab1:not(:checked) ~ .sheet-oldtab1,
 input.sheet-oldtab2:not(:checked) ~ .sheet-oldtab2,
 input.sheet-oldtab3:not(:checked) ~ .sheet-oldtab3,
@@ -175,6 +180,84 @@ input.showinmacrobar[type='checkbox']:checked::before {
   width: 100%;
 }
 
+input.sheet-chkbx:focus,
+input.sheet-spellcaster:focus,
+input.sheet-expand:focus {
+	outline: none !important;
+    box-shadow: none !important;
+}
+
+input.sheet-chkbx,
+input.sheet-spellcaster,
+input.sheet-expand {
+    -webkit-tap-highlight-color: transparent;
+    appearance: none; /* Removes default platform styling */
+}
+
+input.sheet-expand[type='checkbox'] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-color: transparent;
+  text-align: center;
+  vertical-align: middle;
+}
+
+input.sheet-expand[type='checkbox']:before {
+  content: "+";
+  font-size: 12px;
+  color: #74bcee;
+  display: flex;
+  align-items: center;     /* Vertical center */
+  justify-content: center;  /* Horizontal center */
+  line-height: 1;          /* Prevents extra spacing from font metrics */
+  height: 100%;            /* Ensures the flex container fills the box */
+  width: 100%;
+}
+
+input.sheet-expand[type='checkbox']:checked::before {
+  content: "-";
+  font-size: 12px;
+  color: #74bcee;
+  display: flex;
+  align-items: center;     /* Vertical center */
+  justify-content: center;  /* Horizontal center */
+  line-height: 1;          /* Prevents extra spacing from font metrics */
+  height: 100%;            /* Ensures the flex container fills the box */
+  width: 100%;
+}
+
+.sheet-movesvis,
+.sheet-spellsvis,
+.sheet-featsvis,
+.sheet-edgesvis,
+.sheet-uniquesvis,
+.sheet-itemsvis,
+.sheet-skillsvis,
+.sheet-matchsvis,
+.sheet-matchupsvis,
+.sheet-notesvis,
+.sheet-suppsvis,
+.sheet-importsvis {
+    display: none;
+}
+
+h3:has(input.sheet-movevis:checked) + .sheet-movesvis,
+h3:has(input.sheet-spellvis:checked) + .sheet-spellsvis,
+h3:has(input.sheet-featvis:checked) + .sheet-featsvis,
+h3:has(input.sheet-edgevis:checked) + .sheet-edgesvis,
+h3:has(input.sheet-uniquevis:checked) + .sheet-uniquesvis,
+h3:has(input.sheet-itemvis:checked) + .sheet-itemsvis,
+h3:has(input.sheet-skillvis:checked) + .sheet-skillsvis,
+h3:has(input.sheet-matchvis:checked) + .sheet-matchsvis,
+h3:has(input.sheet-matchupvis:checked) + .sheet-matchupsvis,
+h3:has(input.sheet-notevis:checked) + .sheet-notesvis,
+h3:has(input.sheet-suppvis:checked) + .sheet-suppsvis,
+h3:has(input.sheet-importvis:checked) + .sheet-importsvis {
+    display: block;
+}
+
 input.sheet-targeted[type="radio"],
 input.sheet-nontargeted[type="radio"],
 input.sheet-custom[type="radio"] {
@@ -259,7 +342,6 @@ input.sheet-arrow:checked ~ table tr.sheet-table-moves {
 input.sheet-arrow:checked ~ table tr.sheet-table-skills {
     display: table-row;
 }
-
 
 .sheet-rolltemplate-PTU table {
     width: 100%;
@@ -435,7 +517,19 @@ input.sheet-arrow:checked ~ table tr.sheet-table-skills {
  color: #74bcee;
  border-color: transparent;
  border-bottom: 1px solid black;
- text-align: leftleft;
+ text-align: left;
+}
+
+.sheet-shortfield2:hover {
+    background-color: #000000;
+    border-color: #74bcee;
+}
+
+.sheet-shortfield2:focus {
+    background-color: #111111;
+    outline: none;
+    border-color: #74bcee;
+    box-shadow: 0 0 5px #74bcee;
 }
 
 .sheet-shortfield3{
@@ -1076,6 +1170,22 @@ input.sheet-liathearan:not(:checked) ~ div .sheet-liatheartab{
   
 }
 
+.charsheet button[type="action"].sheet-jimport{
+  width: 100%;
+  height: 20px;
+  border-style: solid;
+  color: #74bcee;
+  border-color: #74bcee;
+  background-color: #000000;
+  text-align: center;
+  font-size: 12px;
+  background-image: url("https://files.d20.io/images/472672683/btWAYG0O8a74Nb_DzutuVQ/med.png"); 
+  background-size: 100% 100%;
+  background-repeat: repeat-x;
+  background-position: center;
+  
+}
+
 .charsheet button[type="roll"].sheet-role:before{
   content: ' ';  
 }
@@ -1091,14 +1201,17 @@ input.sheet-liathearan:not(:checked) ~ div .sheet-liatheartab{
   font-size: 12px;
 }
 
-.charsheet button[type="roll"].sheet-display:before{
+.charsheet button[type="roll"].sheet-display:before,
+.charsheet button[type="action"].sheet-display:before {
   content: ' ';
 }
 
-.charsheet button[type="roll"].sheet-display:hover{
+.charsheet button[type="roll"].sheet-display:hover,
+.charsheet button[type="action"].sheet-display:hover {
   filter: brightness(1.50);
 }
 
+.charsheet button[type="action"].sheet-display,
 .charsheet button[type="roll"].sheet-display,
 .abilities .body .rollabil {
   background-image: url("https://files.d20.io/images/472672858/bPbjfI05gdatGgtjJYzAYQ/med.png"); 
